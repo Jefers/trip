@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#ec4899">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rome Trip">
+  <meta name="description" content="A 5-day leisurely sightseeing adventure through the Eternal City">
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  
+  <title>Rome Travel Itinerary</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+        crossorigin="">
+  
+  <style>
+    /* CSS Variables for Pink Glassmorphism Theme */
+    :root {
+      --primary-bg: #0a0a0a;
+      --secondary-bg: #1a1a1a;
+      --tertiary-bg: #2a2a2a;
+      --primary-text: #ffffff;
+      --secondary-text: #a0a0a0;
+      --accent-color: #ec4899;
+      --theme-1: #ec4899;
+      --theme-2: #db2777;
+      --theme-3: #be185d;
+      --theme-4: #fbcfe8;
+      --glow-color-1: #ec4899;
+      --glow-color-2: #f472b6;
+      --glow-color-3: #fb7185;
+      --glow-color-4: #fda4af;
+    }
+
+    .light-mode {
+      --primary-bg: #ffffff;
+      --secondary-bg: #fdf2f8;
+      --tertiary-bg: #fce7f3;
+      --primary-text: #1a1a1a;
+      --secondary-text: #6b7280;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background-color: var(--primary-bg);
+      color: var(--primary-text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Safe area insets for notched phones */
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+
+    /* Glassmorphism Base */
+    .glass {
+      background: rgba(26, 26, 26, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(236, 72, 153, 0.2);
+      border-radius: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .light-mode .glass {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(236, 72, 153, 0.3);
+    }
+
+    /* Animated Glow Border */
+    @property --glow-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    .glow-border {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .glow-border::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 18px;
+      background: conic-gradient(
+        from var(--glow-angle),
+        var(--glow-color-1),
+        var(--glow-color-2),
+        var(--glow-color-3),
+        var(--glow-color-4),
+        var(--glow-color-1)
+      );
+      animation: glow-rotate 3s linear infinite;
+      z-index: -1;
+      opacity: 0.6;
+    }
+
+    .glow-border::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 14px;
+      background: var(--secondary-bg);
+      z-index: -1;
+    }
+
+    @keyframes glow-rotate {
+      from { --glow-angle: 0deg; }
+      to { --glow-angle: 360deg; }
+    }
+
+    /* App Container */
+    #app {
+      max-width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 80px;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, var(--primary-bg), transparent);
+    }
+
+    .header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--theme-1), var(--theme-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      width: 60px;
+      height: 32px;
+      background: var(--tertiary-bg);
+      border-radius: 16px;
+      cursor: pointer;
+      position: relative;
+      border: 2px solid var(--theme-1);
+      transition: all 0.3s ease;
+    }
+
+    .theme-toggle::before {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--theme-1);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .light-mode .theme-toggle::before {
+      left: calc(100% - 26px);
+      background: var(--theme-4);
+    }
+
+    .theme-toggle .sun,
+    .theme-toggle .moon {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      transition: opacity 0.3s ease;
+    }
+
+    .theme-toggle .sun {
+      left: 6px;
+      opacity: 0.5;
+    }
+
+    .theme-toggle .moon {
+      right: 6px;
+      opacity: 1;
+    }
+
+    .light-mode .theme-toggle .sun {
+      opacity: 1;
+    }
+
+    .light-mode .theme-toggle .moon {
+      opacity: 0.5;
+    }
+
+    /* Page Container */
+    .page {
+      display: none;
+      padding: 0 16px;
+      flex: 1;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* Day Card */
+    .day-card {
+      margin-bottom: 20px;
+    }
+
+    .day-header {
+      padding: 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .day-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--theme-1);
+    }
+
+    .day-header .chevron {
+      width: 24px;
+      height: 24px;
+      transition: transform 0.3s ease;
+      color: var(--theme-1);
+    }
+
+    .day-card.expanded .day-header .chevron {
+      transform: rotate(180deg);
+    }
+
+    .day-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .day-card.expanded .day-content {
+      max-height: 5000px;
+    }
+
+    /* Destination Card */
+    .destination-card {
+      margin: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--tertiary-bg);
+    }
+
+    .destination-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--theme-2);
+    }
+
+    /* Time Section */
+    .time-section {
+      margin-bottom: 12px;
+    }
+
+    .time-section h4 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--theme-3);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .time-section p {
+      font-size: 0.9rem;
+      color: var(--secondary-text);
+      line-height: 1.5;
+    }
+
+    /* Step Item */
+    .step-item {
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      background: rgba(236, 72, 153, 0.05);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .step-item:hover {
+      background: rgba(236, 72, 153, 0.1);
+    }
+
+    .step-item.highlighted {
+      background: rgba(236, 72, 153, 0.2);
+      border-color: var(--theme-1);
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+    }
+
+    .step-item .step-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-item .step-checkbox {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--theme-1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .step-item.highlighted .step-checkbox {
+      background: var(--theme-1);
+    }
+
+    .step-item.highlighted .step-checkbox::after {
+      content: '✓';
+      color: white;
+      font-size: 12px;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      padding-bottom: env(safe-area-inset-bottom);
+      background: rgba(10, 10, 10, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(236, 72, 153, 0.2);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .light-mode .bottom-nav {
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border-radius: 12px;
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+      color: var(--secondary-text);
+      transition: color 0.3s ease;
+    }
+
+    .nav-item span {
+      font-size: 0.75rem;
+      color: var(--secondary-text);
+      transition: color 0.3s ease;
+    }
+
+    .nav-item.active svg,
+    .nav-item.active span {
+      color: var(--theme-1);
+    }
+
+    .nav-item:hover {
+      background: rgba(236, 72, 153, 0.1);
+    }
+
+    /* Map Styles */
+    #map-container {
+      height: calc(100vh - 180px);
+      height: calc(100dvh - 180px);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--secondary-bg);
+      color: var(--primary-text);
+      border-radius: 12px;
+    }
+
+    .leaflet-popup-tip {
+      background: var(--secondary-bg);
+    }
+
+    .map-popup {
+      text-align: center;
+    }
+
+    .map-popup h4 {
+      font-weight: 600;
+      color: var(--theme-1);
+      margin-bottom: 4px;
+    }
+
+    .map-popup p {
+      font-size: 0.85rem;
+      color: var(--secondary-text);
+    }
+
+    /* Gallery Styles */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 16px 0;
+    }
+
+    .gallery-item {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      -o-object-fit: cover;
+         object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .gallery-item:hover img {
+      transform: scale(1.05);
+    }
+
+    .add-photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--tertiary-bg);
+      border: 2px dashed var(--theme-1);
+    }
+
+    .add-photo svg {
+      width: 48px;
+      height: 48px;
+      color: var(--theme-1);
+    }
+
+    /* Image Viewer */
+    .image-viewer {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .image-viewer.active {
+      display: flex;
+    }
+
+    .image-viewer img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 12px;
+    }
+
+    .image-viewer .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: var(--tertiary-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      color: var(--primary-text);
+    }
+
+    /* Intro Section */
+    .intro-section {
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .intro-section h1 {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--theme-1), var(--theme-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .intro-section p {
+      color: var(--secondary-text);
+      line-height: 1.6;
+    }
+
+    /* Tips Section */
+    .tips-section,
+    .food-section {
+      margin: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(236, 72, 153, 0.05);
+    }
+
+    .tips-section h4,
+    .food-section h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--theme-2);
+      margin-bottom: 8px;
+    }
+
+    .tips-section ul,
+    .food-section ul {
+      list-style: none;
+    }
+
+    .tips-section li,
+    .food-section li {
+      padding: 6px 0;
+      font-size: 0.85rem;
+      color: var(--secondary-text);
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .tips-section li::before,
+    .food-section li::before {
+      content: '•';
+      color: var(--theme-1);
+      position: absolute;
+      left: 0;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--tertiary-bg);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--theme-1);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--theme-2);
+    }
+
+    /* Loading Spinner */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--tertiary-bg);
+      border-top-color: var(--theme-1);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (min-width: 768px) {
+      .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .header h1 {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .gallery-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+  </style>
+  <script type="module" crossorigin src="/trip/assets/main-CeAKHAY-.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 id="app-title">Rome Trip</h1>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Itinerary Page -->
+    <div class="page active" id="itinerary-page">
+      <div id="itinerary-content">
+        <div class="loading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Page -->
+    <div class="page" id="map-page">
+      <div class="glass glow-border" id="map-container"></div>
+    </div>
+
+    <!-- Gallery Page -->
+    <div class="page" id="gallery-page">
+      <div class="gallery-grid" id="gallery-grid">
+        <!-- Add Photo Button -->
+        <div class="gallery-item add-photo" id="add-photo-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Viewer -->
+    <div class="image-viewer" id="image-viewer">
+      <button class="close-btn" id="close-viewer">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <img id="viewer-image" src="" alt="Full size image">
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <div class="nav-item active" data-page="itinerary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10,9 9,9 8,9"/>
+        </svg>
+        <span>Itinerary</span>
+      </div>
+      <div class="nav-item" data-page="map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2"/>
+          <line x1="8" y1="2" x2="8" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+        <span>Map</span>
+      </div>
+      <div class="nav-item" data-page="gallery">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21,15 16,10 5,21"/>
+        </svg>
+        <span>Gallery</span>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Hidden file input for gallery -->
+  <input type="file" id="photo-input" accept="image/*" style="display: none">
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+          crossorigin=""></script>
+
+  <!-- Main App Script -->
+</body>
+</html>
